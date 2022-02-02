@@ -8,7 +8,7 @@ Config.set('graphics', 'height', '400')
 
 from kivy.core.window import Window
 from kivy.app import App
-from kivy.graphics import Color, Line, Quad
+from kivy.graphics import Color, Line, Quad, Triangle
 from kivy.properties import NumericProperty, Clock
 from kivy.uix.widget import Widget
 
@@ -36,11 +36,19 @@ class MainWidget(Widget):
     tiles = []
     tiles_coordinates = []
 
+    SHIP_WIDTH = .1
+    SHIP_HEIGHT = 0.035
+    SHIP_BASE_Y = 0.04
+    ship = None
+    ship_coordinates = [(0, 0), (0, 0), (0, 0)]
+
     def __init__(self, **kwargs):
         super(MainWidget, self).__init__(**kwargs)
         self.init_vertical_lines()
         self.init_horizontal_lines()
         self.init_tiles()
+        self.init_ship()
+        self.pre_fill_coordinates()
         self.generate_tiles_coordinates()
 
         # Checking the platform
@@ -63,6 +71,32 @@ class MainWidget(Widget):
             Color(1, 1, 1)
             for i in range(self.number_of_tiles):
                 self.tiles.append(Quad())
+
+    def init_ship(self):
+        with self.canvas:
+            Color(0, 0, 0)
+            self.ship = Triangle()
+
+    def update_ship(self):
+        center_x = self.width / 2
+        base_y = self.SHIP_BASE_Y * self.height
+        ship_half_width = self.SHIP_WIDTH * self.width / 2
+        ship_height = self.SHIP_HEIGHT * self.height
+
+        self.ship_coordinates[0] = (center_x - ship_half_width, base_y)
+        self.ship_coordinates[1] = (center_x, base_y + ship_height)
+        self.ship_coordinates[2] = (center_x + ship_half_width, base_y)
+
+        x1, y1 = self.transform(*self.ship_coordinates[0])
+        x2, y2 = self.transform(*self.ship_coordinates[1])
+        x3, y3 = self.transform(*self.ship_coordinates[2])
+
+        self.ship.points = [x1, y1, x2, y2, x3, y3]
+
+
+    def pre_fill_coordinates(self):
+        for i in range(10):
+            self.tiles_coordinates.append((0, i))
 
     def generate_tiles_coordinates(self):
         last_y = 0
@@ -181,6 +215,7 @@ class MainWidget(Widget):
         self.update_vertical_lines()
         self.update_horizontal_lines()
         self.update_tiles()
+        self.update_ship()
 
         speed_y = self.speed_y * self.height / 200
         self.current_offset_y += speed_y * time_factor
