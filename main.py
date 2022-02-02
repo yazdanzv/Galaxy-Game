@@ -11,7 +11,7 @@ Config.set('graphics', 'height', '400')
 from kivy.core.window import Window
 from kivy.app import App
 from kivy.graphics import Color, Line, Quad, Triangle
-from kivy.properties import NumericProperty, Clock
+from kivy.properties import NumericProperty, Clock, ObjectProperty
 from kivy.uix.widget import Widget
 
 Builder.load_file('menu.kv')
@@ -19,6 +19,7 @@ Builder.load_file('menu.kv')
 
 class MainWidget(RelativeLayout):
     from actions import on_keyboard_up, on_keyboard_down, keyboard_closed, on_touch_down, on_touch_up
+    menu_widget = ObjectProperty()
     perspective_point_x = NumericProperty(0)
     perspective_point_y = NumericProperty(0)
     vertical_lines = []
@@ -47,6 +48,7 @@ class MainWidget(RelativeLayout):
     ship_coordinates = [(0, 0), (0, 0), (0, 0)]
 
     game_over_state = False
+    game_has_started = False
 
     def __init__(self, **kwargs):
         super(MainWidget, self).__init__(**kwargs)
@@ -234,12 +236,13 @@ class MainWidget(RelativeLayout):
             tile.points = [x1, y1, x2, y2, x3, y3, x4, y4]
 
     def update(self, dt):
-        if not self.game_over_state:
-            time_factor = dt * 60.0
-            self.update_vertical_lines()
-            self.update_horizontal_lines()
-            self.update_tiles()
-            self.update_ship()
+        time_factor = dt * 60.0
+        self.update_vertical_lines()
+        self.update_horizontal_lines()
+        self.update_tiles()
+        self.update_ship()
+
+        if not self.game_over_state and self.game_has_started:
 
             speed_y = self.speed_y * self.height / 200
             self.current_offset_y += speed_y * time_factor
@@ -256,7 +259,13 @@ class MainWidget(RelativeLayout):
 
         if not self.check_ship_collision() and not self.game_over_state:
             self.game_over_state = True
+            self.menu_widget.opacity = 1
             print("GAME OVER")
+
+    def on_button_clicked(self):
+        print("aaa")
+        self.game_has_started = True
+        self.menu_widget.opacity = 0
 
 
 class GalaxyApp(App):
