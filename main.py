@@ -2,6 +2,8 @@ import random
 
 from kivy import platform
 from kivy.config import Config
+from kivy.lang import Builder
+from kivy.uix.relativelayout import RelativeLayout
 
 Config.set('graphics', 'width', '900')
 Config.set('graphics', 'height', '400')
@@ -12,8 +14,10 @@ from kivy.graphics import Color, Line, Quad, Triangle
 from kivy.properties import NumericProperty, Clock
 from kivy.uix.widget import Widget
 
+Builder.load_file('menu.kv')
 
-class MainWidget(Widget):
+
+class MainWidget(RelativeLayout):
     from actions import on_keyboard_up, on_keyboard_down, keyboard_closed, on_touch_down, on_touch_up
     perspective_point_x = NumericProperty(0)
     perspective_point_y = NumericProperty(0)
@@ -28,7 +32,7 @@ class MainWidget(Widget):
     current_offset_y = 0
     current_y_loop = 0
 
-    speed_x = 12
+    speed_x = 3
     current_speed_x = 0
     current_offset_x = 0
 
@@ -41,6 +45,8 @@ class MainWidget(Widget):
     SHIP_BASE_Y = 0.04
     ship = None
     ship_coordinates = [(0, 0), (0, 0), (0, 0)]
+
+    game_over_state = False
 
     def __init__(self, **kwargs):
         super(MainWidget, self).__init__(**kwargs)
@@ -93,6 +99,23 @@ class MainWidget(Widget):
 
         self.ship.points = [x1, y1, x2, y2, x3, y3]
 
+    def check_ship_collision(self):
+        for i in range(0, len(self.tiles_coordinates)):
+            ti_x, ti_y = self.tiles_coordinates[i]
+            if ti_y > self.current_y_loop + 1:
+                return False
+            if self.check_ship_collision_with_tile(ti_x, ti_y):
+                return True
+        return False
+
+    def check_ship_collision_with_tile(self, ti_x, ti_y):
+        xmin, ymin = self.get_tiles_coordinate(ti_x, ti_y)
+        xmax, ymax = self.get_tiles_coordinate(ti_x + 1, ti_y + 1)
+        for i in range(0, 3):
+            px, py = self.ship_coordinates[i]
+            if xmin <= px <= xmax and ymin <= py <= ymax:
+                return True
+        return False
 
     def pre_fill_coordinates(self):
         for i in range(10):
@@ -107,7 +130,7 @@ class MainWidget(Widget):
             last_y = last_coordinate[1] + 1
             last_x = last_coordinate[0]
 
-        for i in range(len(self.tiles_coordinates)-1, -1, -1):
+        for i in range(len(self.tiles_coordinates) - 1, -1, -1):
             if self.tiles_coordinates[i][1] < self.current_y_loop:
                 del self.tiles_coordinates[i]
 
@@ -211,24 +234,29 @@ class MainWidget(Widget):
             tile.points = [x1, y1, x2, y2, x3, y3, x4, y4]
 
     def update(self, dt):
-        time_factor = dt * 60.0
-        self.update_vertical_lines()
-        self.update_horizontal_lines()
-        self.update_tiles()
-        self.update_ship()
+        if not self.game_over_state:
+            time_factor = dt * 60.0
+            self.update_vertical_lines()
+            self.update_horizontal_lines()
+            self.update_tiles()
+            self.update_ship()
 
-        speed_y = self.speed_y * self.height / 200
-        self.current_offset_y += speed_y * time_factor
+            speed_y = self.speed_y * self.height / 200
+            self.current_offset_y += speed_y * time_factor
 
-        spacing_y = self.Hline_spacing * self.height
-        if self.current_offset_y >= spacing_y:
-            self.current_offset_y -= spacing_y
-            self.current_y_loop += 1
-            self.generate_tiles_coordinates()
-            print("loop : " + str(self.current_y_loop))
+            spacing_y = self.Hline_spacing * self.height
+            while self.current_offset_y >= spacing_y:
+                self.current_offset_y -= spacing_y
+                self.current_y_loop += 1
+                self.generate_tiles_coordinates()
+                print("loop : " + str(self.current_y_loop))
 
-        speed_x = self.current_speed_x * self.width / 200
-        self.current_offset_x += speed_x * time_factor
+            speed_x = self.current_speed_x * self.width / 200
+            self.current_offset_x += speed_x * time_factor
+
+        if not self.check_ship_collision() and not self.game_over_state:
+            self.game_over_state = True
+            print("GAME OVER")
 
 
 class GalaxyApp(App):
