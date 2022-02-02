@@ -1,3 +1,5 @@
+import random
+
 from kivy import platform
 from kivy.config import Config
 
@@ -19,25 +21,27 @@ class MainWidget(Widget):
     horizontal_lines = []
     Vline_number = 16
     Vline_spacing = .2
-    Hline_number = 6
+    Hline_number = 8
     Hline_spacing = .1
 
-    speed_y = 2
+    speed_y = 1
     current_offset_y = 0
+    current_y_loop = 0
 
     speed_x = 12
     current_speed_x = 0
     current_offset_x = 0
 
-    tile = None
-    ti_x = 0
-    ti_y = 0
+    number_of_tiles = 40
+    tiles = []
+    tiles_coordinates = []
 
     def __init__(self, **kwargs):
         super(MainWidget, self).__init__(**kwargs)
         self.init_vertical_lines()
         self.init_horizontal_lines()
         self.init_tiles()
+        self.generate_tiles_coordinates()
 
         # Checking the platform
         if self.is_desktop():
@@ -57,7 +61,47 @@ class MainWidget(Widget):
     def init_tiles(self):
         with self.canvas:
             Color(1, 1, 1)
-            self.tile = Quad()
+            for i in range(self.number_of_tiles):
+                self.tiles.append(Quad())
+
+    def generate_tiles_coordinates(self):
+        last_y = 0
+        last_x = 0
+
+        if len(self.tiles_coordinates) > 0:
+            last_coordinate = self.tiles_coordinates[-1]
+            last_y = last_coordinate[1] + 1
+            last_x = last_coordinate[0]
+
+        for i in range(len(self.tiles_coordinates)-1, -1, -1):
+            if self.tiles_coordinates[i][1] < self.current_y_loop:
+                del self.tiles_coordinates[i]
+
+        for i in range(len(self.tiles_coordinates), self.number_of_tiles):
+            r = random.randint(0, 2)
+            # 0 -> straight
+            # 1 -> right
+            # 2 -> left
+            start_index = -int(self.Vline_number / 2) + 1
+            end_index = start_index + self.Vline_number - 1
+            if last_x <= start_index:
+                r = 1
+            if last_x >= end_index:
+                r = 2
+
+            self.tiles_coordinates.append((last_x, last_y))
+            if r == 1:
+                last_x += 1
+                self.tiles_coordinates.append((last_x, last_y))
+                last_y += 1
+                self.tiles_coordinates.append((last_x, last_y))
+            if r == 2:
+                last_x -= 1
+                self.tiles_coordinates.append((last_x, last_y))
+                last_y += 1
+                self.tiles_coordinates.append((last_x, last_y))
+
+            last_y += 1
 
     def init_vertical_lines(self):
         with self.canvas:
@@ -101,6 +145,7 @@ class MainWidget(Widget):
             self.horizontal_lines[i].points = [x1, y1, x2, y2]
 
     def get_tiles_coordinate(self, ti_x, ti_y):
+        ti_y = ti_y - self.current_y_loop
         x = self.get_line_x_from_index(ti_x)
         y = self.get_line_y_from_index(ti_y)
         return x, y
@@ -118,18 +163,37 @@ class MainWidget(Widget):
         return int(tr_x), int(tr_y)
 
     def update_tiles(self):
-        pass
+        for i in range(self.number_of_tiles):
+            tile = self.tiles[i]
+            tile_coordinates = self.tiles_coordinates[i]
+            xmin, ymin = self.get_tiles_coordinate(tile_coordinates[0], tile_coordinates[1])
+            xmax, ymax = self.get_tiles_coordinate(tile_coordinates[0] + 1, tile_coordinates[1] + 1)
+
+            x1, y1 = self.transform(xmin, ymin)
+            x2, y2 = self.transform(xmin, ymax)
+            x3, y3 = self.transform(xmax, ymax)
+            x4, y4 = self.transform(xmax, ymin)
+
+            tile.points = [x1, y1, x2, y2, x3, y3, x4, y4]
 
     def update(self, dt):
         time_factor = dt * 60.0
         self.update_vertical_lines()
         self.update_horizontal_lines()
         self.update_tiles()
-        self.current_offset_x += self.current_speed_x * time_factor
-        if self.current_offset_y >= self.Hline_spacing * self.height:
-            self.current_offset_y -= self.Hline_spacing * self.height
-        else:
-            self.current_offset_y += self.speed_y * time_factor
+
+        speed_y = self.speed_y * self.height / 200
+        self.current_offset_y += speed_y * time_factor
+
+        spacing_y = self.Hline_spacing * self.height
+        if self.current_offset_y >= spacing_y:
+            self.current_offset_y -= spacing_y
+            self.current_y_loop += 1
+            self.generate_tiles_coordinates()
+            print("loop : " + str(self.current_y_loop))
+
+        speed_x = self.current_speed_x * self.width / 200
+        self.current_offset_x += speed_x * time_factor
 
 
 class GalaxyApp(App):
