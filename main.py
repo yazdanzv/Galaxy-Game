@@ -1,17 +1,17 @@
-import random
-
-from kivy import platform
 from kivy.config import Config
+from kivy.core.audio import SoundLoader
+
+Config.set('graphics', 'width', '1300')
+Config.set('graphics', 'height', '500')
+
+import random
+from kivy import platform
 from kivy.lang import Builder
 from kivy.uix.relativelayout import RelativeLayout
-
-Config.set('graphics', 'width', '900')
-Config.set('graphics', 'height', '400')
-
 from kivy.core.window import Window
 from kivy.app import App
 from kivy.graphics import Color, Line, Quad, Triangle
-from kivy.properties import NumericProperty, Clock, ObjectProperty
+from kivy.properties import NumericProperty, Clock, ObjectProperty, StringProperty
 from kivy.uix.widget import Widget
 
 Builder.load_file('menu.kv')
@@ -22,6 +22,9 @@ class MainWidget(RelativeLayout):
     menu_widget = ObjectProperty()
     perspective_point_x = NumericProperty(0)
     perspective_point_y = NumericProperty(0)
+    label_text = StringProperty("G    A    L    A    X    Y")
+    button_text = StringProperty("START")
+    score_text = StringProperty('')
     vertical_lines = []
     horizontal_lines = []
     Vline_number = 16
@@ -50,12 +53,20 @@ class MainWidget(RelativeLayout):
     game_over_state = False
     game_has_started = False
 
+    sound_begin = None
+    sound_galaxy = None
+    sound_gameover_impact = None
+    sound_gameover_voice = None
+    sound_music1 = None
+    sound_restart = None
+
     def __init__(self, **kwargs):
         super(MainWidget, self).__init__(**kwargs)
         self.init_vertical_lines()
         self.init_horizontal_lines()
         self.init_tiles()
         self.init_ship()
+        self.init_audio()
         self.pre_fill_coordinates()
         self.generate_tiles_coordinates()
 
@@ -67,12 +78,40 @@ class MainWidget(RelativeLayout):
 
         # Updating the code to make you think you are moving
         Clock.schedule_interval(self.update, 1.0 / 60.0)
+        self.sound_galaxy.play()
+
+    def reset_game(self):
+        self.current_offset_y = 0
+        self.current_y_loop = 0
+        self.current_offset_x = 0
+        self.current_speed_x = 0
+        self.tiles_coordinates = []
+        self.pre_fill_coordinates()
+        self.generate_tiles_coordinates()
+        self.score_text = ''
+
+        self.game_over_state = False
 
     def is_desktop(self):
         if platform in ('linux', 'win', 'macos'):
             return True
         else:
             return False
+
+    def init_audio(self):
+        self.sound_begin = SoundLoader.load("audio/begin.wav")
+        self.sound_galaxy = SoundLoader.load("audio/galaxy.wav")
+        self.sound_gameover_impact = SoundLoader.load("audio/gameover_impact.wav")
+        self.sound_gameover_voice = SoundLoader.load("audio/gameover_voice.wav")
+        self.sound_music1 = SoundLoader.load("audio/music1.wav")
+        self.sound_restart = SoundLoader.load("audio/restart.wav")
+
+        self.sound_music1.volume = 1
+        self.sound_begin.volume = .25
+        self.sound_galaxy.volume = .25
+        self.sound_gameover_voice.volume = .25
+        self.sound_restart.volume = .25
+        self.sound_gameover_impact.volume = .6
 
     def init_tiles(self):
         with self.canvas:
@@ -251,6 +290,7 @@ class MainWidget(RelativeLayout):
             while self.current_offset_y >= spacing_y:
                 self.current_offset_y -= spacing_y
                 self.current_y_loop += 1
+                self.score_text = "SCORE : " + str(self.current_y_loop)
                 self.generate_tiles_coordinates()
                 print("loop : " + str(self.current_y_loop))
 
@@ -260,10 +300,24 @@ class MainWidget(RelativeLayout):
         if not self.check_ship_collision() and not self.game_over_state:
             self.game_over_state = True
             self.menu_widget.opacity = 1
+            self.sound_music1.stop()
+            self.sound_gameover_impact.play()
+            Clock.schedule_once(self.play_game_over_voice_sound, 3)
+            self.label_text = "G   A   M   E   O   V   E   R"
+            self.button_text = "RESTART"
             print("GAME OVER")
 
+    def play_game_over_voice_sound(self, dt):
+        if self.game_over_state:
+            self.sound_gameover_voice.play()
+
     def on_button_clicked(self):
-        print("aaa")
+        if self.game_over_state:
+            self.sound_restart.play()
+        else:
+            self.sound_begin.play()
+        self.sound_music1.play()
+        self.reset_game()
         self.game_has_started = True
         self.menu_widget.opacity = 0
 

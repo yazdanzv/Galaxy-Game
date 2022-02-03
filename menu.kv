@@ -5,10 +5,16 @@
         Rectangle:
             size: self.size
     Label:
-        text: "title"
+        font_size: "60dp"
+        font_name: "fonts/Sackers-Gothic-Std-Light.ttf"
+        text: root.parent.label_text
         pos_hint: {"center_x": 0.5, "center_y": 0.6}
     Button:
-        text: "ok"
-        pos_hint: {"center_x": 0.5, "center_y": 0.4}
+        font_size: "25dp"
+        font_name: "fonts/Eurostile.ttf"
+        text: root.parent.button_text
+        pos_hint: {"center_x": 0.5, "center_y": 0.3}
         size_hint: .2, .1
+        background_normal: ''
+        background_color: 1, 0.3, 0.4, 0.85
         on_press: root.parent.on_button_clicked()
